@@ -33,7 +33,7 @@ function viewEmployee() {
     FROM employee 
     LEFT JOIN role ON employee.role_id = role.id 
     LEFT JOIN department ON role.department_id = department.id 
-    LEFT JOIN employee manager ON manager.id = employee.manager_id`, function (err, results) {
+    LEFT JOIN employee manager ON manager.id = employee.manager_id;`, function (err, results) {
         console.table(results);
     });
 
@@ -41,28 +41,6 @@ function viewEmployee() {
 }
 
 function addEmployee() {
-    db.query('SELECT role.title, role.id FROM role', function (err, res) {
-        // Turn Array of DATA into Array of OBJECTS that inquirer expects for its choices
-        const choices = res.map((item) => {
-            return {
-                name: item.title,
-                value: item.id,
-            }
-        });
-
-        inquirer.prompt([
-        {
-            type: 'list',
-            message: 'What is the role of this employee?',
-            name: 'employeeRole',
-            choices: choices
-        }
-       ]).then(
-        () => {
-            console.log('Test');
-        }
-       )
-    })
 
     const employeePrompt = [{
         type: 'input',
@@ -74,34 +52,72 @@ function addEmployee() {
         message: 'What is the last name of this employee?',
         name: 'lastName'
     },
-    {
-        type: 'list',
-        message: 'What is the role of this employee?',
-        name: 'employeeRole',
-        choices: sa
-    },
-    {
-        type: 'input',
-        message: 'who is the manager of this employee?',
-        name: 'managerName'
-    }];
+];
 
-    inquirer.prompt(employeePrompt)
-        .then((answers) => {
+    db.query('SELECT role.title, role.id FROM role', function (err, res) {
+        // Turn Array of DATA into Array of OBJECTS that inquirer expects for its choices
+        const roleChoices = res.map((role) => {
+            return {
+                name: role.title,
+                value: role.id,
+            }
+        });
+        
+        employeePrompt.push({
+            type: 'list',
+            message: 'What is the role of this employee?',
+            name: 'employeeRole',
+            choices: roleChoices
+        });
 
-            // VALUES (?, ?, ?, ?), [answers.firstName, answers.lastName, answers.emnployeeRole, answers.managerName], (err, res) => {
+        db.query('SELECT employee.first_name, employee.last_name, employee.id FROM employee;', function (err, res) {
+            // Turn Array of DATA into Array of OBJECTS that inquirer expects for its choices
+            const managerChoices = res.map((manager) => {
+                return {
+                    name: manager.first_name,
+                    value: manager.id,
+                }
+            });
 
-            // })
+            employeePrompt.push({
+                type: 'list',
+                message: 'Who is the manager of this employee?',
+                name: 'managerName',
+                choices: managerChoices
+            });
+
+            inquirer.prompt(employeePrompt)
+            .then((answers) => {
+                db.query(
+                    `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                    VALUES ("${answers.firstName.replaceAll(" ", "_")}", "${answers.lastName.replaceAll(" ", "_")}", ${answers.employeeRole}, ${answers.managerName});`,
+                    (err, res) => {
+                        if (err) {
+                            throw err;
+                        } 
+                        console.log(`${answers.firstName} ${answers.lastName} has been added to the database!`)
+
+                        init();
+                    }
+                )
+            })
         })
-    }
+    })
+}
 
 
-function updateEmployee() {
+function updateEmployeeRole() {
+    db.query(`UPDATE employee SET role_id = ? WHERE id = ?;`, (err, res) => {
+        if (err) {
+            throw err;
+        }
 
+        init();
+    })
 }
 
 function viewRoles() {
-    db.query('SELECT role.id, role.title, role.salary, department.name AS department FROM role LEFT JOIN department ON role.id = department.id', function (err, results) {
+    db.query('SELECT role.id, role.title, role.salary, department.name AS department FROM role LEFT JOIN department ON role.id = department.id;', function (err, results) {
         console.table(results);
     });
 
@@ -129,7 +145,7 @@ function addRole() {
 }
 
 function viewDepartment() {
-    db.query('SELECT department.id, department.name FROM department', function (err, results) {
+    db.query('SELECT department.id, department.name FROM department;', function (err, results) {
         console.table(results);
     });
 
@@ -176,7 +192,7 @@ function init() {
                     break;
 
                 case 'Update Employee Role':
-                    updateEmployee();
+                    updateEmployeeRole();
                     break;
 
                 case 'View All Roles':
